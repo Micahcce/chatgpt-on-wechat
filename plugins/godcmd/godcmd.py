@@ -131,6 +131,10 @@ ADMIN_COMMANDS = {
         "alias": ["debug", "调试模式", "DEBUG"],
         "desc": "开启机器调试日志",
     },
+    "showlog": {
+        "alias": ["showlog", "查看日志"],
+        "desc": "打印日志最后行数",
+    }
 }
 
 
@@ -352,6 +356,20 @@ class Godcmd(Plugin):
                             else:
                                 logger.setLevel(logging.DEBUG)
                                 ok, result = True, "DEBUG模式已开启"
+                        elif cmd == "showlog":
+                            if len(args) == 0:
+                                self.show_log(10)
+                                ok, result = True, "已显示最后10行日志"
+                            else:
+                                try:
+                                    arg = int(args[0])
+                                    if 1 <= arg <= 50:
+                                        self.show_log(arg)
+                                        ok, result = True, f"已显示最后{arg}行日志"
+                                    else:
+                                        ok, result = False, "参数错误，请提供打印行数(1~50)"
+                                except ValueError:
+                                    ok, result = False, "参数错误，请提供有效的整数(1~50)"
                         elif cmd == "plist":
                             plugins = PluginManager().list_plugins()
                             ok = True
@@ -483,3 +501,19 @@ class Godcmd(Plugin):
                 self.password = gconf["password"]
             if gconf.get("admin_users"):
                 self.admin_users = gconf["admin_users"]
+
+    def show_log(self, showlines:int = 10):
+        current_dir = os.getcwd()  
+        fname = os.path.join(current_dir, 'run.log')
+        with open(fname, 'rb') as f:
+            off = -1024
+            while True:
+                f.seek(off, 2)
+                lines = f.readlines()
+                if len(lines) >= showlines:
+                    last_lines = lines[-showlines:]  # 获取最后showlines行
+                    break
+                off *= 2
+
+            for line in last_lines:
+                print(line.decode('utf-8').strip())

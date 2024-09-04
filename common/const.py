@@ -68,6 +68,3 @@ MODEL_LIST = [
               LINKAI_35, LINKAI_4_TURBO, LINKAI_4o
             ]
 
-# channel
-FEISHU = "feishu"
-DINGTALK = "dingtalk"

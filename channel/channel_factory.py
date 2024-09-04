@@ -33,10 +33,10 @@ def create_channel(channel_type) -> Channel:
     elif channel_type == "wework":
         from channel.wework.wework_channel import WeworkChannel
         ch = WeworkChannel()
-    elif channel_type == const.FEISHU:
+    elif channel_type == "feishu":
         from channel.feishu.feishu_channel import FeiShuChanel
         ch = FeiShuChanel()
-    elif channel_type == const.DINGTALK:
+    elif channel_type == "dingtalk":
         from channel.dingtalk.dingtalk_channel import DingTalkChanel
         ch = DingTalkChanel()
     else:
