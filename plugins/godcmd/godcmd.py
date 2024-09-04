@@ -1,6 +1,7 @@
 # encoding:utf-8
 
 import json
+from math import log
 import os
 import random
 import string
@@ -133,8 +134,8 @@ ADMIN_COMMANDS = {
     },
     "showlog": {
         "alias": ["showlog", "查看日志"],
-        "desc": "打印日志最后行数",
-    }
+        "desc": "打印日志最后N行",
+    },
 }
 
 
@@ -475,7 +476,9 @@ class Godcmd(Plugin):
         elif password == self.temp_password:
             self.admin_users.append(userid)
             global_config["admin_users"].append(userid)
-            return True, "认证成功，请尽快设置口令"
+            self.temp_password = None
+            logger.info("[Godcmd] Use of temporary password")
+            return True, "认证成功，临时口令失效，请尽快设置口令"
         else:
             return False, "认证失败"
 
