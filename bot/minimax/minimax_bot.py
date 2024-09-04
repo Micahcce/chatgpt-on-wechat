@@ -45,22 +45,10 @@ class MinimaxBot(Bot):
 
     def reply(self, query, context: Context = None) -> Reply:
         # acquire reply content
-        logger.info("[Minimax_AI] query={}".format(query))
         if context.type == ContextType.TEXT:
+            logger.info("[Minimax_AI] query={}".format(query))
+            
             session_id = context["session_id"]
-            reply = None
-            clear_memory_commands = conf().get("clear_memory_commands", ["#清除记忆"])
-            if query in clear_memory_commands:
-                self.sessions.clear_session(session_id)
-                reply = Reply(ReplyType.INFO, "记忆已清除")
-            elif query == "#清除所有":
-                self.sessions.clear_all_session()
-                reply = Reply(ReplyType.INFO, "所有人记忆已清除")
-            elif query == "#更新配置":
-                load_config()
-                reply = Reply(ReplyType.INFO, "配置已更新")
-            if reply:
-                return reply
             session = self.sessions.session_query(query, session_id)
             logger.debug("[Minimax_AI] session query={}".format(session))
 

@@ -40,32 +40,25 @@ class ClaudeAPIBot(Bot, OpenAIImage):
         if context and context.type:
             if context.type == ContextType.TEXT:
                 logger.info("[CLAUDE_API] query={}".format(query))
+                
                 session_id = context["session_id"]
-                reply = None
-                if query == "#清除记忆":
-                    self.sessions.clear_session(session_id)
-                    reply = Reply(ReplyType.INFO, "记忆已清除")
-                elif query == "#清除所有":
-                    self.sessions.clear_all_session()
-                    reply = Reply(ReplyType.INFO, "所有人记忆已清除")
-                else:
-                    session = self.sessions.session_query(query, session_id)
-                    result = self.reply_text(session)
-                    logger.info(result)
-                    total_tokens, completion_tokens, reply_content = (
-                        result["total_tokens"],
-                        result["completion_tokens"],
-                        result["content"],
-                    )
-                    logger.debug(
-                        "[CLAUDE_API] new_query={}, session_id={}, reply_cont={}, completion_tokens={}".format(str(session), session_id, reply_content, completion_tokens)
-                    )
+                session = self.sessions.session_query(query, session_id)
+                result = self.reply_text(session)
+                logger.info(result)
+                total_tokens, completion_tokens, reply_content = (
+                    result["total_tokens"],
+                    result["completion_tokens"],
+                    result["content"],
+                )
+                logger.debug(
+                    "[CLAUDE_API] new_query={}, session_id={}, reply_cont={}, completion_tokens={}".format(str(session), session_id, reply_content, completion_tokens)
+                )
 
-                    if total_tokens == 0:
-                        reply = Reply(ReplyType.ERROR, reply_content)
-                    else:
-                        self.sessions.session_reply(reply_content, session_id, total_tokens)
-                        reply = Reply(ReplyType.TEXT, reply_content)
+                if total_tokens == 0:
+                    reply = Reply(ReplyType.ERROR, reply_content)
+                else:
+                    self.sessions.session_reply(reply_content, session_id, total_tokens)
+                    reply = Reply(ReplyType.TEXT, reply_content)
                 return reply
             elif context.type == ContextType.IMAGE_CREATE:
                 ok, retstring = self.create_img(query, 0)
