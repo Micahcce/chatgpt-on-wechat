@@ -203,6 +203,7 @@ class ChatChannel(Channel):
                     wav_path = file_path
                 # 语音识别
                 reply = super().build_voice_to_text(wav_path)
+                context["user_text"] = reply.content
                 # 删除临时文件
                 try:
                     os.remove(file_path)
@@ -216,6 +217,7 @@ class ChatChannel(Channel):
                     new_context = self._compose_context(ContextType.TEXT, reply.content, **context.kwargs)
                     if new_context:
                         reply = self._generate_reply(new_context)
+                        context["bot_text"] = reply.content
                     else:
                         return
             elif context.type == ContextType.IMAGE:  # 图片消息，当前仅做下载保存到本地的逻辑

@@ -32,7 +32,7 @@ class EdgeVoice(Voice):
         zh-TW-HsiaoYuNeural
         zh-TW-YunJheNeural
         '''
-        self.voice = "zh-CN-YunjianNeural"
+        self.voice = "zh-CN-XiaoyiNeural"
 
     def voiceToText(self, voice_file):
         pass

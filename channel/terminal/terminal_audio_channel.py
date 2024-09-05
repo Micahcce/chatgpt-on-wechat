@@ -1,4 +1,7 @@
 import sys
+import threading
+import asyncio
+import keyboard
 
 from numpy import record
 
@@ -9,6 +12,7 @@ from channel.chat_message import ChatMessage
 from common.log import logger
 from config import conf
 from voice.audio_recorder import AudioRecorder
+from voice.audio_player import AudioPlayer
 
 
 class TerminalAudioMessage(ChatMessage):
@@ -16,7 +20,7 @@ class TerminalAudioMessage(ChatMessage):
         self,
         msg_id,
         content,
-        ctype = ContextType.VOICE,
+        ctype,
         from_user_id="User",
         to_user_id="Chatgpt",
         other_user_id="Chatgpt",
@@ -30,10 +34,22 @@ class TerminalAudioMessage(ChatMessage):
 
 
 class TerminalAudioChannel(ChatChannel):
-
+    def __init__(self):
+        super().__init__()
+        self.NOT_SUPPORT_REPLYTYPE = []
+        self.msg_id = 0
+        self.lock = threading.Lock()  # 用于控制对msg_id的访问
+        self.auto_record = False
+    
     def send(self, reply: Reply, context: Context):
+        if ContextType.VOICE == context.type:
+            print(context["user_text"])
+
         print("\nBot:")
-        if reply.type == ReplyType.IMAGE:
+        if reply.type == ReplyType.VOICE:
+            print(context["bot_text"])
+            asyncio.run(self.player.play(reply.content))
+        elif reply.type == ReplyType.IMAGE:
             from PIL import Image
 
             image_storage = reply.content
@@ -64,25 +80,37 @@ class TerminalAudioChannel(ChatChannel):
 
     def startup(self):
         context = Context()
-        audio_recorder = AudioRecorder()
-        #logger.setLevel("WARN")
-        print("\nPlease input your question:\nUser:", end="")
+        self.recorder = AudioRecorder()
+        self.player = AudioPlayer()
+        logger.setLevel("WARNING")
+        print("\n请输入您的问题（或按下左Shift键开始录音，可输入'toggle'切换为自动录音）:\nUser:", end="")
         sys.stdout.flush()
-        msg_id = 0
+        
+        # 创建线程，用于监听语音录制
+        audio_thread = threading.Thread(target=self.record_audio)
+        audio_thread.daemon = True              # 设置为守护线程，以便主线程结束后，子线程也会结束
+        audio_thread.start()
+
         while True:
             try:
-                record_file = audio_recorder.record()
-                
-                #prompt = self.get_input()
+                prompt = self.get_input()
             except KeyboardInterrupt:
                 print("\nExiting...")
                 sys.exit()
-            msg_id += 1
+                
+            if prompt == "toggle":
+                self.auto_record = not self.auto_record
+                print("切换成功\nUser:")
+                continue
+                
+            with self.lock:
+                self.msg_id += 1
+                
             #trigger_prefixs = conf().get("single_chat_prefix", [""])
             #if check_prefix(prompt, trigger_prefixs) is None:
             #    prompt = trigger_prefixs[0] + prompt  # 给没触发的消息加上触发前缀
 
-            context = self._compose_context(ContextType.VOICE, record_file, msg=TerminalAudioMessage(msg_id, record_file))
+            context = self._compose_context(ContextType.TEXT, prompt, msg=TerminalAudioMessage(self.msg_id, prompt, ContextType.TEXT))
             context["isgroup"] = False
             if context:
                 self.produce(context)
@@ -96,3 +124,27 @@ class TerminalAudioChannel(ChatChannel):
         sys.stdout.flush()
         line = input()
         return line
+
+    def record_audio(self):
+        while True:
+            try:
+                if self.auto_record == True:
+                    record_file = self.recorder.listen_record()
+                else:
+                    record_file = self.recorder.shiftkey_record()
+            except KeyboardInterrupt:
+                print("\nExiting...")
+                sys.exit()
+                
+            with self.lock:
+                self.msg_id += 1
+
+            context = self._compose_context(ContextType.VOICE, record_file, msg=TerminalAudioMessage(self.msg_id, record_file, ContextType.VOICE))
+            context["isgroup"] = False
+            if context:
+                self.produce(context)
+            else:
+                raise Exception("context is None")
+
+
+
