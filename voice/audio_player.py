@@ -1,9 +1,9 @@
 import io
-
+import threading
+import queue
 import pyaudio
 import wave
 from pydub import AudioSegment
-
 from common.log import logger
 
 
@@ -13,68 +13,83 @@ class AudioPlayer:
         self.audio = None
         self.stream = None
         self.p = pyaudio.PyAudio()
+        self.lock = threading.Lock()  # 用于线程安全
+        self.is_playing = False  # 标识当前是否有音频正在播放
+        self.queue = queue.Queue()  # 播放队列
+        
+        # 播放线程
+        self.play_thread = threading.Thread(target=self._process_queue)
+        self.play_thread.daemon = True
+        self.play_thread.start()
 
     def play(self, file_name):
-        self.file_path = file_name
-        # 根据文件类型播放音频
-        if self.file_path.endswith('.wav'):
-            self._play_wav()
-        elif self.file_path.endswith('.mp3'):
-            self._play_mp3()
-        else:
-            raise ValueError("Unsupported file format. Only .wav and .mp3 are supported.")
+        # 将请求加入队列
+        self.queue.put(file_name)
+        logger.debug(f"Added {file_name} to the queue.")
+
+    def _process_queue(self):
+        while True:
+            # 等待播放队列中的下一个文件
+            file_name = self.queue.get()
+            with self.lock:
+                self.is_playing = True
+                self.file_path = file_name
+
+                # 根据文件类型选择播放方式
+                if self.file_path.endswith('.wav'):
+                    self._play_wav()
+                elif self.file_path.endswith('.mp3'):
+                    self._play_mp3()
+                else:
+                    logger.error("Unsupported file format. Only .wav and .mp3 are supported.")
+                    self.is_playing = False
+
+            self.queue.task_done()
 
     def _play_wav(self):
-        # 打开 WAV 文件
-        wf = wave.open(self.file_path, 'rb')
+        try:
+            wf = wave.open(self.file_path, 'rb')
+            self.stream = self.p.open(format=self.p.get_format_from_width(wf.getsampwidth()),
+                                      channels=wf.getnchannels(),
+                                      rate=wf.getframerate(),
+                                      output=True)
 
-        # 创建音频流
-        self.stream = self.p.open(format=self.p.get_format_from_width(wf.getsampwidth()),
-                                  channels=wf.getnchannels(),
-                                  rate=wf.getframerate(),
-                                  output=True)
-
-        # 读取数据并播放
-        data = wf.readframes(1024)
-        while data:
-            self.stream.write(data)
             data = wf.readframes(1024)
+            while data:
+                self.stream.write(data)
+                data = wf.readframes(1024)
 
-        # 关闭文件
-        wf.close()
+            wf.close()
+        finally:
+            self._close_stream()
+            self.is_playing = False
 
     def _play_mp3(self):
-        # 使用 pydub 打开并解码 MP3 文件
-        self.audio = AudioSegment.from_mp3(self.file_path)
+        try:
+            self.audio = AudioSegment.from_mp3(self.file_path)
+            self.stream = self.p.open(format=self.p.get_format_from_width(self.audio.sample_width),
+                                      channels=self.audio.channels,
+                                      rate=self.audio.frame_rate,
+                                      output=True)
 
-        # 打开音频流
-        self.stream = self.p.open(format=self.p.get_format_from_width(self.audio.sample_width),
-                                  channels=self.audio.channels,
-                                  rate=self.audio.frame_rate,
-                                  output=True)
-
-        # 将音频数据转换为字节流
-        data = io.BytesIO(self.audio.raw_data)
-
-        # 每次读取 1024 个字节并播放
-        chunk_size = 1024
-        chunk = data.read(chunk_size)
-
-        while chunk:
-            self.stream.write(chunk)
+            data = io.BytesIO(self.audio.raw_data)
+            chunk_size = 1024
             chunk = data.read(chunk_size)
-            
-        self._close_stream()
-        logger.debug("Finished playing audio.")
+
+            while chunk:
+                self.stream.write(chunk)
+                chunk = data.read(chunk_size)
+
+        finally:
+            self._close_stream()
+            self.is_playing = False
+            logger.debug("Finished playing audio.")
 
     def _close_stream(self):
-        # 停止播放并清理资源
         if self.stream:
             self.stream.stop_stream()
             self.stream.close()
 
     def terminate(self):
-        # 关闭 PyAudio 实例
         if self.p:
             self.p.terminate()
-

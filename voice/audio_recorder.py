@@ -15,23 +15,23 @@ class AudioRecorder:
         self.channels = 1  # 单声道
         self.rate = 16000  # 采样频率44100（百度语音识别仅支持16K或8K）
         self.record_seconds = 60  # 最大录音时长（以防长时间无声）
-        self.voice_threshold = 700  # 声音检测阈值
+        self.voice_threshold = 800  # 声音检测阈值
         self.silence_chunks = 30   #允许的连续静音块数，超出该数停止录音。（每秒采样块数=RATE/CHUNK）
         self.pressdown_chunks = 10   #按键检测块数，超出该数录音有效
         self.output_filepath = TmpDir().path() + "record_output.wav"  # 录音保存文件
         
-        # PyAudio和流对象
-        self.p = pyaudio.PyAudio()
+        self.p = None
         self.stream = None
 
     def _print_volume(self, data):
-        """ 用于调试：打印当前音量的大小，返回值为均值绝对值 """
+        """ 用于调试：打印当前音量的大小，值为均值绝对值 """
         audio_data = np.frombuffer(data, np.int16)
         volume = np.abs(audio_data).mean()
         print(f"当前音量：{volume}")  # 打印音量大小
 
     def _open_stream(self):
         """打开音频流"""
+        self.p = pyaudio.PyAudio()
         self.stream = self.p.open(format=self.format,
                         channels=self.channels,
                         rate=self.rate,
@@ -40,13 +40,14 @@ class AudioRecorder:
     
     def _close_stream(self):
         """关闭音频流"""
-        if self.stream:
-            self.stream.stop_stream()
-            self.stream.close()
+        #if self.stream:
+        self.stream.stop_stream()
+        self.stream.close()
+        #if self.p:
+        self.p.terminate()
         
-    def terminate(self):
-        if self.p:
-            self.p.terminate()
+    def stop_record(self):
+        self.running = False
 
     def listen_record(self):
         """ 录音函数，根据声音阈值和沉默块数自动控制录音 """
@@ -55,9 +56,10 @@ class AudioRecorder:
         frames = []
         record_silent_chunks = 0  # 记录连续静音块数
         start_recording = False
+        self.running = True
         # print("等待检测到声音...")
-        
-        while True:
+
+        while self.running:
             data = self.stream.read(self.chunk, exception_on_overflow=False)
             #self._print_volume()   #打印音量大小
 
@@ -81,34 +83,41 @@ class AudioRecorder:
             if len(frames) >= (self.rate // self.chunk) * self.record_seconds:
                 logger.warning("达到最大录音时长。")
                 break
+        else:
+            self._close_stream()
+            return None
 
         self._close_stream()
         self._save_to_wave(frames)
         return self.output_filepath
+            
     
     def shiftkey_record(self):
-        """ 录音函数，按压左shift键录音 """
+        """ 录音函数，按压右shift键录音 """
         self._open_stream()
         
         frames = []
         pressdown_num = 0
-        #print("按下左shift键开始录音")
+        self.running = True
+        #print("按下右shift键开始录音")
         
-        while True:
-            while keyboard.is_pressed("LEFT_SHIFT"):
+        while self.running:
+            while keyboard.is_pressed("RIGHT_SHIFT"):
                 if pressdown_num == 0:
                     logger.info("开始录音...")
                 data = self.stream.read(self.chunk, exception_on_overflow=False)
                 frames.append(data)
                 pressdown_num += 1
             if pressdown_num and pressdown_num >= self.pressdown_chunks:
+                logger.info("录音完成。")
                 break
             elif pressdown_num:
                 pressdown_num = 0
-                logger.warning("录音时间过短，请按下左shift重新录制")
-            
-        logger.info("录音完成。")
-        
+                logger.warning("录音时间过短，请按下右shift重新录制")
+        else:
+            self._close_stream()
+            return None
+
         self._close_stream()
         self._save_to_wave(frames)
         return self.output_filepath

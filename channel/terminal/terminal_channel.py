@@ -41,7 +41,7 @@ class TerminalChannel(ChatChannel):
         self.auto_record = False
     
     def send(self, reply: Reply, context: Context):
-        if ContextType.VOICE == context.type:
+        if context.type == ContextType.VOICE:
             print(context["user_text"])
 
         print("\nBot:")
@@ -82,7 +82,7 @@ class TerminalChannel(ChatChannel):
         self.recorder = AudioRecorder()
         self.player = AudioPlayer()
         logger.setLevel("WARNING")
-        print("\n请输入您的问题（或按下左Shift键开始录音，可输入'toggle'切换为自动录音）:\nUser:", end="")
+        print("\n请输入您的问题（或按下右Shift键开始录音，可输入'toggle'切换为自动录音）:\nUser:", end="")
         sys.stdout.flush()
         
         # 创建线程，用于监听语音录制
@@ -99,7 +99,11 @@ class TerminalChannel(ChatChannel):
                 
             if prompt == "toggle":
                 self.auto_record = not self.auto_record
-                print("切换成功\nUser:")
+                self.recorder.stop_record()
+                if self.auto_record:
+                    print("已切换到监听模式\nUser:")
+                else:
+                    print("已切换到按键模式\nUser:")
                 continue
                 
             with self.lock:
@@ -131,6 +135,9 @@ class TerminalChannel(ChatChannel):
                     record_file = self.recorder.listen_record()
                 else:
                     record_file = self.recorder.shiftkey_record()
+                    
+                if record_file == None:     # 切换模式时返回 None
+                    continue
             except KeyboardInterrupt:
                 print("\nExiting...")
                 sys.exit()
