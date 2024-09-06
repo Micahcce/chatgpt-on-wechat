@@ -1,82 +1,84 @@
 # encoding:utf-8
 
+import json
+
 from aip import AipImageClassify
 
 import plugins
-from bridge.bridge import Bridge
 from bridge.context import ContextType
-from bridge.reply import Reply, ReplyType
+from bridge.context import Context, ContextType
 from common.log import logger
 from plugins import *
-from config import conf
 
 
 @plugins.register(
     name="baidu_imgrecg",
     desire_priority=10,
-    hidden=True,
-    desc="°Ù¶ÈÍ¼ÏñÊ¶±ğ²å¼ş",
+    hidden=False,
+    desc="ç™¾åº¦å›¾åƒè¯†åˆ«æ’ä»¶",
     version="1.0",
-    author="Micahcee",
+    author="Micahcce",
 )
             
         
 class BaiduImgRecg(Plugin):
         '''
-        °Ù¶ÈÍ¼Æ¬Ê¶±ğ
+        ç™¾åº¦å›¾ç‰‡è¯†åˆ«
         '''
         def __init__(self):
             super().__init__()
             try:
-                self.baidu_app_id = conf().get("baidu_imgrecg_app_id", None)
-                self.baidu_api_key = conf().get("baidu_imgrecg_api_key", None)
-                self.baidu_secret_key = conf().get("baidu_imgrecg_secret_key", None)
-                self.client = AipImageClassify(self.baidu_app_id, self.baidu_api_key, self.baidu_secret_key)
+                pconfig = super().load_config()
+                baidu_app_id = pconfig.get("baidu_imgrecg_app_id", None)
+                baidu_api_key = pconfig.get("baidu_imgrecg_api_key", None)
+                baidu_secret_key = pconfig.get("baidu_imgrecg_secret_key", None)
+                self.client = AipImageClassify(baidu_app_id, baidu_api_key, baidu_secret_key)
 
-                self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
-                logger.info("[baidu_imgrecg] inited")
+                self.handlers[Event.ON_RECEIVE_MESSAGE] = self.on_receive_message
+                logger.info("[BAIDU_IMGRECG] inited")
             except Exception as e:
-                print(f"[baidu_imgrecg] inited:{e}")
+                print(f"[BAIDU_IMGRECG] inited: {e}")
 
 
-        def on_handle_context(self, e_context: EventContext):
-            if e_context['context'].type != ContextType.TEXT:
+        def on_receive_message(self, e_context: EventContext):
+            if e_context['context'].type != ContextType.IMAGE:
                 return
-            img_path = e_context['context'].content
             
             try:
-                reply = Reply()
-                reply.type = ReplyType.TEXT
-
+                img_path = e_context['context'].content
                 data = self.baidu_imgrecg(img_path)
-                data = "ÒÔÏÂÎªÍ¼Æ¬Ê¶±ğ·µ»Ø½á¹û£¬Çë¼òµ¥ÆÀÂÛÒ»ÏÂ£º" + data
-                print(data)
                 
-                reply.content = data
+                new_data = "ä»¥ä¸‹ä¸ºå›¾ç‰‡è¯†åˆ«è¿”å›ç»“æœï¼Œå…¶ä¸­'keyword'ä»£è¡¨å›¾ä¸­çš„ç‰©ä½“ï¼Œ'score'ä»£è¡¨è¯†åˆ«çš„å¯ä¿¡åº¦ï¼Œ'root'ä»£è¡¨ç‰©ä½“ç±»åˆ«ï¼Œè¯·ç®€è¦è¯„è®ºä¸¤å¥ï¼š" + json.dumps(data, ensure_ascii=False)
+                logger.debug(f"[BAIDU_IMGRECG] modify the input = {new_data}")
             except Exception as e:
-                print(e)
+                print(f"[BAIDU_IMGRECG] get imgrecg error: {e}")
                 
-            e_context['reply'] = reply
-            e_context.action = EventAction.BREAK  # ÊÂ¼ş½áÊø£¬²»ÔÙ¸øÏÂ¸ö²å¼ş´¦Àí£¬½»¸¶¸øÄ¬ÈÏµÄÊÂ¼ş´¦ÀíÂß¼­
+            e_context['context'].type = ContextType.TEXT
+            e_context['context'].content = new_data
+            e_context.action = EventAction.BREAK_PASS  # äº‹ä»¶ç»“æŸï¼Œä¸å†ç»™ä¸‹ä¸ªæ’ä»¶å¤„ç†ï¼Œä¸äº¤ä»˜ç»™é»˜è®¤çš„äº‹ä»¶å¤„ç†é€»è¾‘
 
 
         def get_file_content(self, filePath):
-            """ ¶ÁÈ¡Í¼Æ¬ """
+            """ è¯»å–å›¾ç‰‡ """
             with open(filePath, 'rb') as fp:
                 return fp.read()
             
 
         def baidu_imgrecg(self, img_path):
+            """ 
+            å›¾åƒè¯†åˆ«ï¼Œè¿”å›å­—å…¸ 
+            """
             image = self.get_file_content(img_path)
 
-            """ µ÷ÓÃÍ¨ÓÃÎïÌåºÍ³¡¾°Ê¶±ğ """
-            self.client.advancedGeneral(image)
+            """ å¦‚æœæœ‰å¯é€‰å‚æ•° """
+            #options = {}
+            #options["baike_num"] = 5
+            #data = self.client.advancedGeneral(image, options)
 
-            """ Èç¹ûÓĞ¿ÉÑ¡²ÎÊı """
-            options = {}
-            options["baike_num"] = 5
-
-            """ ´ø²ÎÊıµ÷ÓÃÍ¨ÓÃÎïÌåºÍ³¡¾°Ê¶±ğ """
-            data = self.client.advancedGeneral(image, options)
+            """ è°ƒç”¨é€šç”¨ç‰©ä½“å’Œåœºæ™¯è¯†åˆ« """
+            data = self.client.advancedGeneral(image)
+            
+            data = data["result"]
+            
             return data
 
