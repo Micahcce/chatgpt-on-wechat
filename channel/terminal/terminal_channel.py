@@ -1,6 +1,5 @@
 import sys
 import threading
-import keyboard
 
 from numpy import record
 
@@ -101,9 +100,9 @@ class TerminalChannel(ChatChannel):
                 self.auto_record = not self.auto_record
                 self.recorder.stop_record()
                 if self.auto_record:
-                    print("已切换到监听模式\nUser:")
+                    print("已切换到监听模式\nUser:", end="")
                 else:
-                    print("已切换到按键模式\nUser:")
+                    print("已切换到按键模式\nUser:", end="")
                 continue
                 
             with self.lock:

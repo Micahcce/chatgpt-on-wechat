@@ -1,9 +1,12 @@
 import io
+import os
 import threading
 import queue
+
 import pyaudio
 import wave
 from pydub import AudioSegment
+
 from common.log import logger
 
 
@@ -45,6 +48,11 @@ class AudioPlayer:
                     self.is_playing = False
 
             self.queue.task_done()
+            # É¾³ýÁÙÊ±ÎÄ¼þ
+            try:
+                os.remove(file_name)
+            except Exception as e:
+                logger.warning("[AUDIO_PLAYER]delete temp file error: " + str(e))
 
     def _play_wav(self):
         try:
