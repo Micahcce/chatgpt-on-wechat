@@ -5,6 +5,7 @@ Auto-replay chat robot abstract class
 
 from bridge.context import Context
 from bridge.reply import Reply
+from bot.session_manager import SessionManager
 
 
 class Bot(object):
