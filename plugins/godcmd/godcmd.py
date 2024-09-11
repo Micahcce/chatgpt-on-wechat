@@ -359,14 +359,14 @@ class Godcmd(Plugin):
                                 ok, result = True, "DEBUG模式已开启"
                         elif cmd == "showlog":
                             if len(args) == 0:
-                                self.show_log(10)
-                                ok, result = True, "已显示最后10行日志"
+                                text = self.show_log(10)
+                                ok, result = True, f"{text}\n\n已显示最后10行日志"
                             else:
                                 try:
                                     arg = int(args[0])
                                     if 1 <= arg <= 50:
-                                        self.show_log(arg)
-                                        ok, result = True, f"已显示最后{arg}行日志"
+                                        text = self.show_log(arg)
+                                        ok, result = True, f"{text}\n\n已显示最后{arg}行日志"
                                     else:
                                         ok, result = False, "参数错误，请提供打印行数(1~50)"
                                 except ValueError:
@@ -518,5 +518,5 @@ class Godcmd(Plugin):
                     break
                 off *= 2
 
-            for line in last_lines:
-                print(line.decode('utf-8').strip())
+            return "\n".join(line.decode('utf-8') for line in last_lines)
+        

@@ -42,10 +42,6 @@ class OpenaiImage(Image):
                 ],
             )
             content = response.choices[0].message["content"]
-                
-            #session_id = e_context["context"]["session_id"]
-            #if content != "":
-            #    Bridge().get_bot("chat").sessions.session_reply(content, session_id)
             
             reply = Reply(ReplyType.TEXT, content)
 
