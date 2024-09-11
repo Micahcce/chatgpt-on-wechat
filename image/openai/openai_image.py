@@ -22,10 +22,10 @@ class OpenaiImage(Image):
         logger.debug("[Openai] image file name={}".format(image_path))
         try:
             reply = Reply()
-            base64_image = self.encode_image(image_path) # 获取编码
+            base64_image = self.encode_image(image_path) # 鑾峰彇缂栫爜
                 
             response = openai.ChatCompletion.create(
-                model="gpt-4o",                         # 固定模型名称: gpt-4o
+                model="gpt-4o",                         # 鍥哄畾妯″瀷鍚嶇О: gpt-4o
                 messages=[
                     {
                         "role": "user",
@@ -51,7 +51,7 @@ class OpenaiImage(Image):
 
             logger.info("[Openai] imageRecg content={} image file name={}".format(content, image_path))
         except Exception as e:
-            reply = Reply(ReplyType.ERROR, "我暂时还无法看见您的图片，请稍后再试吧~")
+            reply = Reply(ReplyType.ERROR, "鎴戞殏鏃惰繕鏃犳硶鐪嬭鎮ㄧ殑鍥剧墖锛岃绋嶅悗鍐嶈瘯鍚")
         finally:
             return reply
 
