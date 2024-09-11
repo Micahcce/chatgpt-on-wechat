@@ -17,6 +17,8 @@ class Bridge(object):
             "chat": const.CHATGPT,
             "voice_to_text": conf().get("voice_to_text", "openai"),
             "text_to_voice": conf().get("text_to_voice", "google"),
+            "image_recg": conf().get("image_recg", "openai"),
+            "image_create": conf().get("image_create", "openai"),
             "translate": conf().get("translate", "baidu"),
         }
         # 这边取配置的模型
@@ -97,7 +99,7 @@ class Bridge(object):
         return self.get_bot("image_recg").imageRecg(imageFile)
     
     def fetch_image_create(self, text) -> Reply:
-        return self.get_bot("image_recg").imageCreate(text)
+        return self.get_bot("image_create").imageCreate(text)
 
     def fetch_translate(self, text, from_lang="", to_lang="en") -> Reply:
         return self.get_bot("translate").translate(text, from_lang, to_lang)
