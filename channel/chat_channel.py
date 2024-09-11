@@ -203,7 +203,7 @@ class ChatChannel(Channel):
                     wav_path = file_path
                 # 语音识别
                 reply = super().build_voice_to_text(wav_path)
-                context["user_text"] = reply.content
+                context["user_text"] = reply.content        #terminal通道专用
                 # 删除临时文件
                 try:
                     os.remove(file_path)
@@ -217,7 +217,7 @@ class ChatChannel(Channel):
                     new_context = self._compose_context(ContextType.TEXT, reply.content, **context.kwargs)
                     if new_context:
                         reply = self._generate_reply(new_context)
-                        context["bot_text"] = reply.content
+                        context["bot_text"] = reply.content     #terminal通道专用
                     else:
                         return
             elif context.type == ContextType.IMAGE:  # 图片消息，当前仅做下载保存到本地的逻辑
@@ -225,6 +225,24 @@ class ChatChannel(Channel):
                     "path": context.content,
                     "msg": context.get("msg")
                 }
+                cmsg = context["msg"]
+                cmsg.prepare()
+                image_path = context.content
+                # 图像识别
+                reply = super().build_image_recg(image_path)
+                # 删除临时文件
+                try:
+                    os.remove(image_path)
+                except Exception as e:
+                    pass
+                    # logger.warning("[chat_channel]delete temp file error: " + str(e))
+
+                if reply.type == ReplyType.TEXT:
+                    new_context = self._compose_context(ContextType.TEXT, reply.content, **context.kwargs)
+                    if new_context:
+                        reply = self._generate_reply(new_context)
+                    else:
+                        return
             elif context.type == ContextType.SHARING:  # 分享信息，当前无默认逻辑
                 pass
             elif context.type == ContextType.FUNCTION or context.type == ContextType.FILE:  # 文件消息及函数调用等，当前无默认逻辑

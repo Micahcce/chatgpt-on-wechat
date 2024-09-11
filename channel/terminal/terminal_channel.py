@@ -80,7 +80,7 @@ class TerminalChannel(ChatChannel):
         context = Context()
         self.recorder = AudioRecorder()
         self.player = AudioPlayer()
-        logger.setLevel("DEBUG")
+        logger.setLevel("WARNING")
         print("\n请输入您的问题（或按下右Shift键开始录音，可输入'toggle'切换为自动录音）:\nUser:", end="")
         sys.stdout.flush()
         

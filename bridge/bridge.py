@@ -7,6 +7,7 @@ from common.singleton import singleton
 from config import conf
 from translate.factory import create_translator
 from voice.factory import create_voice
+from image.factory import create_image
 
 
 @singleton
@@ -70,6 +71,10 @@ class Bridge(object):
                 self.bots[typename] = create_voice(self.btype[typename])
             elif typename == "voice_to_text":
                 self.bots[typename] = create_voice(self.btype[typename])
+            elif typename == "image_recg":
+                self.bots[typename] = create_image(self.btype[typename])
+            elif typename == "image_create":
+                self.bots[typename] = create_image(self.btype[typename])
             elif typename == "chat":
                 self.bots[typename] = create_bot(self.btype[typename])
             elif typename == "translate":
@@ -87,6 +92,12 @@ class Bridge(object):
 
     def fetch_text_to_voice(self, text) -> Reply:
         return self.get_bot("text_to_voice").textToVoice(text)
+    
+    def fetch_image_recg(self, imageFile) -> Reply:
+        return self.get_bot("image_recg").imageRecg(imageFile)
+    
+    def fetch_image_create(self, text) -> Reply:
+        return self.get_bot("image_recg").imageCreate(text)
 
     def fetch_translate(self, text, from_lang="", to_lang="en") -> Reply:
         return self.get_bot("translate").translate(text, from_lang, to_lang)
